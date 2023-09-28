@@ -3,12 +3,21 @@ import time
 import json
 import nmap
 import threading
+import socket
 
-
-server_url = "http://localhost:3000"
+server_url = "http://localhost:5000"
 
 # Create a config file that has ip_range that has to be scanned.
 # Also create function that can edit the config file.
+
+def get_hostname(ip_address):
+    try:
+        hostname = socket.gethostbyaddr(ip_address)
+        print(f"The hostname for {ip_address} is {hostname[0]}")
+        return hostname
+    except socket.herror:
+        print(f"Could not find the hostname for {ip_address}")
+        return ''
 
 def nmap_scan():
 
@@ -23,7 +32,7 @@ def nmap_scan():
         #         hostname,
         #         ip_address,
         #         mac_address,
-        #         os_match,
+        #         os_match,pa
         #         status
         #         Device type,
         #      },
@@ -47,7 +56,7 @@ def get_request():
     while True:
         try:
             print("check")
-            response = requests.get(server_url + "/agent-do")
+            response = requests.get(server_url + "/api/agent-do")
             print(response.status_code)
             response = response.text
 
@@ -73,8 +82,13 @@ def get_request():
             print(f'{e}')
         time.sleep(1)     
 
+
 get_thread = threading.Thread(target=get_request)
 get_thread.start()
 
 # other work
+def login():
+    
+    pass
+
 
