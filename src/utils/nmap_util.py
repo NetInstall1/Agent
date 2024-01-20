@@ -4,7 +4,7 @@ import nmap
 
 
 
-def get_hostname(ip_address):
+async def get_hostname(ip_address):
     try:
         print("Getting hostname...")
         hostname = socket.gethostbyaddr(ip_address)
@@ -38,7 +38,7 @@ def get_agent_ip():
         return ''
 
     
-def nmap_scan():
+async def nmap_scan():
 
     with open('config.json', 'r') as f:
         config_file = json.load(f)
@@ -61,7 +61,7 @@ def nmap_scan():
             }
 
             if not host['hostname']:
-                host['hostname'] = get_hostname(host['ip_address'])
+                host['hostname'] = await get_hostname(host['ip_address'])
 
             print(f"Host info: {host}")
             host_results.append(host)

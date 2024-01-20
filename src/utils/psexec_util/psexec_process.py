@@ -1,6 +1,6 @@
 import subprocess
 
-def psexec_command(ip_address, username, password, command):
+async def psexec_command(ip_address, username, password, command):
     psexec_command_string  = f'psexec \\\\{ip_address} -s -u {username} -p {password} {command}'
     
     try:

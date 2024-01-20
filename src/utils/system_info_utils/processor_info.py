@@ -6,7 +6,7 @@ print("processor info")
 
 async def processor_info(ip_address, username, password):
     try:
-        command = "wmic cpu get caption, deviceid, name, numberofcores, maxclockspeed"
+        command = 'cmd /c "wmic cpu get caption, deviceid, name, numberofcores, maxclockspeed"'
         result = psexec_command(ip_address, username, password, command)
         lines = result.split('\n')
         header = lines[0].split()
