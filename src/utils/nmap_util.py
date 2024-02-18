@@ -1,7 +1,8 @@
 import socket
 import json
 import nmap
-
+import socket
+import platform
 
 
 async def get_hostname(ip_address):
@@ -13,8 +14,6 @@ async def get_hostname(ip_address):
         print(f"Could not find the hostname for {ip_address}")
         return ''
 
-import socket
-import platform
 
 def get_os(ip_address):
     try:
@@ -39,33 +38,40 @@ def get_agent_ip():
 
     
 async def nmap_scan():
-
+    agent_hostname = socket.gethostname()
     with open('config.json', 'r') as f:
         config_file = json.load(f)
         target = config_file['ip_range'] # This ip_range is for testing only.
+        agent_id = config_file['agent_id']
         print(f'Target IP range: {target}')
          
     try:
         nm = nmap.PortScanner()
         print(f"Scanning IP range: {target}")
         hosts = nm.scan(target, arguments="-sn -T5")
+        encountered_ips = set()
         host_results = []
         for ip_address, host_data in hosts['scan'].items():
             host = {
+            
                 "ip_address": ip_address,
                 "hostname": host_data['hostnames'][0]['name'] if host_data.get('hostnames') else '',
                 "mac_address": host_data.get('addresses', {}).get('mac', ''),
                 "os": host_data['osmatch'][0]['name'] if host_data.get('osmatch') else '',
                 "status": host_data.get('status', {}).get('state', ''),
-                "action": "Discovered"
+                "action": "Discovered",
+                "agent_id": agent_id 
             }
-
             if not host['hostname']:
                 host['hostname'] = await get_hostname(host['ip_address'])
-
-            print(f"Host info: {host}")
-            host_results.append(host)
-
+        
+            
+            # Only add the host if it's not the agent itself and it's not already in the list
+            if agent_hostname != host['hostname'] and ip_address not in encountered_ips:
+                print(f"Host info: {host}")
+                host_results.append(host)
+                encountered_ips.add(ip_address)
+        
         return host_results
     except nmap.PortScannerError as e:
         print(f"Nmap scan error: {e}")
