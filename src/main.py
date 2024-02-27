@@ -93,6 +93,7 @@ def download_file(file_path, dest_folder):
 def check_for_new_uploads(server_url, destination_folder):
     while True:
         try:
+            print("checking for new uploads...")
             response = requests.get(server_url + '/api/new-uploads')
             if response.status_code == 200:
                 uploads = response.json()
@@ -108,8 +109,6 @@ def check_for_new_uploads(server_url, destination_folder):
 
 def deploy(ip_addresses):
     print("Deploying...")
-    # psexec \\192.168.192.200 -u netinstall -p n3tinst@ll -s cmd /c "net use Z: \\192.168.192.26\netinstall /user:netinstall n3tinst@ll & copy Z:\netinstallTest.txt "C:/netinstall/software" & net use Z: /delete"
-    
     # Note: agent username and password must be same as other guests' username and password
     with open('config.json', 'r') as f:
         general_info = json.load(f)
