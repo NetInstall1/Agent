@@ -107,25 +107,28 @@ def check_for_new_uploads(server_url, destination_folder):
 
 
 
-def deploy(ip_addresses):
+def deploy(ip_addresses, filename, silent_command):
     print("Deploying...")
-    # Note: agent username and password must be same as other guests' username and password
-    with open('config.json', 'r') as f:
-        general_info = json.load(f)
-        print("config file content: " + str(general_info))
-    username = general_info.get('username')
-    password = general_info.get('password')
-    # command = 'cmd /c "net use Z: \\192.168.192.26\netinstall /user:netinstall n3tinst@ll & copy Z:\netinstallTest.txt "C:/netinstall/software" & net use Z: /delete'
-    agent_ip_address = get_agent_ip()
+    try:
+        with open('config.json', 'r') as f:
+            general_info = json.load(f)
+            print("config file content: " + str(general_info))
+        username = general_info.get('username')
+        password = general_info.get('password')
+        agent_ip_address = general_info.get('agent_ip_address')
+        netinstall_dir = "C:\netinstall\software"
+        deploy_threads = []
+        for ip_address in ip_addresses:
+            command = f'cmd /c "net use Z: /delete && net use Z: \\{agent_ip_address}\netinstall /user:{username} {password} && (mkdir C:\netinstall\software 2>nul || echo Directory already exists) && copy "Z:\{filename}" {netinstall_dir} && echo File copied successfully || echo Error copying file or accessing network share && net use Z: /delete && "{netinstall_dir}{filename}" {silent_command} && exit"'
+            print(ip_address)
+            deploy_thread = threading.Thread(target=psexec_command, args=(ip_address, username, password, command, ))
+            deploy_threads.append(deploy_thread)
+            deploy_thread.start()
 
-    deploy_threads = []
-    for ip_address in ip_addresses:
-        command = f'cmd /c "net use Z: \\{agent_ip_address}\netinstall /user:{username} {password} & copy Z:\netinstallTest.txt "C:/netinstall/software" & net use Z: /delete'
-        deploy_thread = threading.Thread(target=psexec_command, args=(ip_address, username, password, command, ))
-        deploy_threads.append(deploy_thread)
-        # create a socket to update the status of the deploy-process.
-
-
+        for thread in deploy_threads:
+            thread.join()
+    except Exception as e:
+        print(e)
 
 async def get_request():
     while True:
@@ -162,9 +165,14 @@ async def get_request():
 
 
             elif(response['work'] == 'deploy'):
-                ip_address = response['ip_address']
-                deploy(ip_address)
+                print("helo")
+                print(response)
+                ip_addresses = response['deployInfo']['ipAddresses']
+                filename =   response['deployInfo']['fileIdentifier']
+                silent_command = response['deployInfo']['silent_command']
+                deploy(ip_addresses, filename, silent_command)
             
+
         except Exception as e:
             try:
                 headers = {'Content-Type': 'application/json'}
