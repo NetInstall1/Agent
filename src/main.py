@@ -107,7 +107,7 @@ def check_for_new_uploads(server_url, destination_folder):
 
 
 
-def deploy(ip_addresses, filename, silent_command):
+async def deploy(ip_addresses, filename, silent_command):
     print("Deploying...")
     try:
         with open('config.json', 'r') as f:
@@ -121,7 +121,7 @@ def deploy(ip_addresses, filename, silent_command):
         for ip_address in ip_addresses:
             command = f'cmd /c "net use Z: /delete && net use Z: \\{agent_ip_address}\netinstall /user:{username} {password} && (mkdir C:\netinstall\software 2>nul || echo Directory already exists) && copy "Z:\{filename}" {netinstall_dir} && echo File copied successfully || echo Error copying file or accessing network share && net use Z: /delete && "{netinstall_dir}{filename}" {silent_command} && exit"'
             print(ip_address)
-            deploy_thread = threading.Thread(target=psexec_command, args=(ip_address, username, password, command, ))
+            deploy_thread = threading.Thread(target=await psexec_command, args=(ip_address, username, password, command, ))  # Await psexec_command
             deploy_threads.append(deploy_thread)
             deploy_thread.start()
 
@@ -165,12 +165,15 @@ async def get_request():
 
 
             elif(response['work'] == 'deploy'):
-                print("helo")
-                print(response)
+                print("deploy if else")
                 ip_addresses = response['deployInfo']['ipAddresses']
                 filename =   response['deployInfo']['fileIdentifier']
                 silent_command = response['deployInfo']['silent_command']
-                deploy(ip_addresses, filename, silent_command)
+                try:
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(None, deploy, ip_addresses, filename, silent_command)
+                except Exception as e:
+                    print(f"Error occurred during deploy: {e}")
             
 
         except Exception as e:
@@ -181,8 +184,12 @@ async def get_request():
             except Exception as e:
                 print("Post request failed "+ str(e))
                 # print(f'{e}')
-        time.sleep(1)     
+        time.sleep(1)   
 
+async def run_deploy_in_thread(ip_addresses, filename, silent_command):
+    
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, deploy, ip_addresses, filename, silent_command)
 
 
 async def main():
