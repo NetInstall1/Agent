@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import os
 import shutil
+import tracemalloc
+
 
 # server_url = "http://localhost:5000"
 server_url = None
@@ -112,23 +114,25 @@ async def deploy(ip_addresses, filename, silent_command):
     try:
         with open('config.json', 'r') as f:
             general_info = json.load(f)
-            print("config file content: " + str(general_info))
+            print("config file content:", general_info)
+
         username = general_info.get('username')
         password = general_info.get('password')
         agent_ip_address = general_info.get('agent_ip_address')
-        netinstall_dir = "C:\netinstall\software"
-        deploy_threads = []
+
+        netinstall_dir = r"C:\netinstall\software"
+
+        tasks = []
         for ip_address in ip_addresses:
             command = f'cmd /c "net use Z: /delete && net use Z: \\{agent_ip_address}\netinstall /user:{username} {password} && (mkdir C:\netinstall\software 2>nul || echo Directory already exists) && copy "Z:\{filename}" {netinstall_dir} && echo File copied successfully || echo Error copying file or accessing network share && net use Z: /delete && "{netinstall_dir}{filename}" {silent_command} && exit"'
-            print(ip_address)
-            deploy_thread = threading.Thread(target=await psexec_command, args=(ip_address, username, password, command, ))  # Await psexec_command
-            deploy_threads.append(deploy_thread)
-            deploy_thread.start()
+            print("Deploying to:", ip_address)
+            task = asyncio.create_task(psexec_command(ip_address, username, password, command))
+            tasks.append(task)
 
-        for thread in deploy_threads:
-            thread.join()
+        await asyncio.gather(*tasks)
+
     except Exception as e:
-        print(e)
+        print("Error occurred during deployment:", e)
 
 async def get_request():
     while True:
@@ -165,13 +169,12 @@ async def get_request():
 
 
             elif(response['work'] == 'deploy'):
-                print("deploy if else")
-                ip_addresses = response['deployInfo']['ipAddresses']
-                filename =   response['deployInfo']['fileIdentifier']
-                silent_command = response['deployInfo']['silent_command']
+                ip_addresses=   response['deployInfo']['ipAddresses']
+                filename=       response['deployInfo']['fileIdentifier']
+                silent_command= response['deployInfo']['silent_command']
+                print(ip_addresses, filename, silent_command)
                 try:
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(None, deploy, ip_addresses, filename, silent_command)
+                   await deploy(ip_addresses, filename, silent_command)
                 except Exception as e:
                     print(f"Error occurred during deploy: {e}")
             
@@ -185,11 +188,6 @@ async def get_request():
                 print("Post request failed "+ str(e))
                 # print(f'{e}')
         time.sleep(1)   
-
-async def run_deploy_in_thread(ip_addresses, filename, silent_command):
-    
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, deploy, ip_addresses, filename, silent_command)
 
 
 async def main():
@@ -221,3 +219,4 @@ if __name__ == "__main__":
     # sio.connect(server_url)
     asyncio.run(main())
 
+tracemalloc.start()
