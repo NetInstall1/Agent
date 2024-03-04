@@ -124,7 +124,8 @@ async def deploy(ip_addresses, filename, silent_command):
 
         tasks = []
         for ip_address in ip_addresses:
-            command = f'cmd /c "net use Z: /delete && net use Z: \\{agent_ip_address}\netinstall /user:{username} {password} && (mkdir C:\netinstall\software 2>nul || echo Directory already exists) && copy "Z:\{filename}" {netinstall_dir} && echo File copied successfully || echo Error copying file or accessing network share && net use Z: /delete && "{netinstall_dir}{filename}" {silent_command} && exit"'
+            command = fr'cmd /c "net use Z: \\{agent_ip_address}\netinstall /user:{username} {password} && (mkdir C:\netinstall\software 2>nul || echo Directory already exists) && copy "Z:\{filename}" {netinstall_dir} && echo File copied successfully || echo Error copying file or accessing network share && net use Z: /delete && cd "{netinstall_dir}" && "{filename}" {silent_command}"'
+            print(command)
             print("Deploying to:", ip_address)
             task = asyncio.create_task(psexec_command(ip_address, username, password, command))
             tasks.append(task)
